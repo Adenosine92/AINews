@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AI News Aggregator — Stay current with the latest in artificial intelligence from 13+ sources including OpenAI, Anthropic, Google DeepMind, ArXiv, and more.">
+  <title>AI News Aggregator</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <span class="app-logo">🤖</span>
+        <div class="app-title-group">
+          <h1 class="app-title">AI News</h1>
+          <span id="lastRefreshed" class="last-refreshed"></span>
+        </div>
+      </div>
+      <div class="header-right">
+        <button id="refreshBtn" class="btn-icon" title="Refresh feeds">
+          <span id="refreshIcon" class="icon-refresh">↻</span>
+        </button>
+        <button id="themeToggle" class="btn-icon" title="Toggle theme">
+          <span id="themeIcon">🌙</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="tab-nav" role="tablist">
+      <button class="tab-btn active" data-tab="feed" role="tab" aria-selected="true">
+        <span class="tab-icon">📰</span>
+        <span class="tab-label">Feed</span>
+      </button>
+      <button class="tab-btn" data-tab="report" role="tab" aria-selected="false">
+        <span class="tab-icon">⚡</span>
+        <span class="tab-label">Report</span>
+      </button>
+      <button class="tab-btn" data-tab="bookmarks" role="tab" aria-selected="false">
+        <span class="tab-icon">🔖</span>
+        <span class="tab-label">Saved</span>
+        <span id="bookmarkBadge" class="badge" hidden></span>
+      </button>
+      <button class="tab-btn" data-tab="sources" role="tab" aria-selected="false">
+        <span class="tab-icon">📡</span>
+        <span class="tab-label">Sources</span>
+      </button>
+      <button class="tab-btn" data-tab="settings" role="tab" aria-selected="false">
+        <span class="tab-icon">⚙️</span>
+        <span class="tab-label">Settings</span>
+      </button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="app-main">
+
+      <!-- ── Feed Tab ── -->
+      <section id="tab-feed" class="tab-panel active" role="tabpanel">
+        <div class="feed-controls">
+          <div class="search-wrapper">
+            <span class="search-icon">🔍</span>
+            <input
+              type="search"
+              id="searchInput"
+              class="search-input"
+              placeholder="Search articles…"
+              autocomplete="off"
+            >
+            <button id="clearSearch" class="clear-btn" hidden aria-label="Clear search">✕</button>
+          </div>
+          <div class="filter-pills" role="group" aria-label="Filter articles">
+            <button class="pill active" data-filter="all">All</button>
+            <button class="pill" data-filter="research">Research</button>
+            <button class="pill" data-filter="news">News</button>
+            <button class="pill" data-filter="company">Company</button>
+            <button class="pill" data-filter="bookmarked">Bookmarked</button>
+          </div>
+        </div>
+        <div id="feedStats" class="feed-stats" hidden></div>
+        <div id="articleList" class="article-list">
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading AI news…</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Quick Report Tab ── -->
+      <section id="tab-report" class="tab-panel" role="tabpanel" hidden>
+        <div class="report-top">
+          <div class="report-title-row">
+            <h2>Quick Report</h2>
+            <button id="exportReportBtn" class="btn-secondary" hidden>Export ↓</button>
+          </div>
+          <div class="report-controls">
+            <div class="period-selector" role="group" aria-label="Report period">
+              <button class="period-btn" data-period="hour">Last Hour</button>
+              <button class="period-btn active" data-period="today">Today</button>
+              <button class="period-btn" data-period="week">This Week</button>
+            </div>
+            <button id="generateReportBtn" class="btn-primary">Generate</button>
+          </div>
+        </div>
+        <div id="reportContent" class="report-content">
+          <div class="empty-state">
+            <span class="empty-icon">⚡</span>
+            <h3>No report yet</h3>
+            <p>Select a time period and click Generate to see a categorised AI news summary.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Bookmarks Tab ── -->
+      <section id="tab-bookmarks" class="tab-panel" role="tabpanel" hidden>
+        <div class="section-header">
+          <h2>Saved Articles</h2>
+          <button id="clearBookmarksBtn" class="btn-text danger" hidden>Clear All</button>
+        </div>
+        <div id="bookmarkList" class="article-list">
+          <div class="empty-state">
+            <span class="empty-icon">🔖</span>
+            <h3>No saved articles</h3>
+            <p>Tap the bookmark icon on any article to save it here.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Sources Tab ── -->
+      <section id="tab-sources" class="tab-panel" role="tabpanel" hidden>
+        <div class="section-header">
+          <div class="sources-stats">
+            <strong id="sourcesActiveCount">0</strong>/<span id="sourcesTotalCount">0</span> active
+          </div>
+          <input
+            type="search"
+            id="sourcesSearch"
+            class="search-input compact"
+            placeholder="Filter sources…"
+          >
+        </div>
+        <div id="sourcesList" class="sources-list"></div>
+      </section>
+
+      <!-- ── Settings Tab ── -->
+      <section id="tab-settings" class="tab-panel" role="tabpanel" hidden>
+        <div id="settingsContainer" class="settings-container"></div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ── Article Detail Modal ── -->
+  <div id="articleModal" class="modal" hidden aria-modal="true" role="dialog" aria-labelledby="modalTitle">
+    <div class="modal-backdrop" id="modalBackdrop"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <div id="modalSourceBadge" class="modal-source-badge"></div>
+        <div class="modal-actions">
+          <button id="modalBookmarkBtn" class="btn-icon" title="Bookmark">🔖</button>
+          <button id="modalShareBtn" class="btn-icon" title="Share">↗</button>
+          <button id="closeModalBtn" class="btn-icon close-btn" aria-label="Close">✕</button>
+        </div>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+      <div class="modal-footer">
+        <a id="readFullArticleBtn" href="#" target="_blank" rel="noopener noreferrer" class="btn-primary full-width">
+          Read Full Article ↗
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script src="sources.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
