@@ -112,13 +112,17 @@ function formatDate(date) {
 /* ── RSS Fetching ────────────────────────────────────────────────────────── */
 async function fetchSource(source) {
   const url = RSS2JSON + encodeURIComponent(source.feedURL);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(12000) });
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
     if (!res.ok) return [];
     const data = await res.json();
     if (data.status !== 'ok' || !Array.isArray(data.items)) return [];
     return data.items.map(item => parseRssItem(item, source));
   } catch {
+    clearTimeout(timer);
     return [];
   }
 }
