@@ -26,8 +26,8 @@ const STORAGE_KEYS = {
   settings:  'ai_news_settings',
 };
 
-// rss2json.com — free, CORS-friendly RSS-to-JSON proxy
-const RSS2JSON = 'https://api.rss2json.com/v1/api.json?count=30&rss_url=';
+// allorigins.win — free CORS proxy, no API key, no rate limits
+const CORS_PROXY = 'https://api.allorigins.win/get?url=';
 
 /* ── Persistence ─────────────────────────────────────────────────────────── */
 function loadStorage() {
@@ -111,24 +111,62 @@ function formatDate(date) {
 
 /* ── RSS Fetching ────────────────────────────────────────────────────────── */
 async function fetchSource(source) {
-  const url = RSS2JSON + encodeURIComponent(source.feedURL);
+  const url = CORS_PROXY + encodeURIComponent(source.feedURL);
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 12000);
+  const timer = setTimeout(() => controller.abort(), 15000);
   try {
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timer);
     if (!res.ok) return [];
     const data = await res.json();
-    if (data.status !== 'ok' || !Array.isArray(data.items)) return [];
-    return data.items.map(item => parseRssItem(item, source));
+    if (!data.contents) return [];
+    return parseFeed(data.contents, source);
   } catch {
     clearTimeout(timer);
     return [];
   }
 }
 
+function parseFeed(xmlStr, source) {
+  try {
+    const doc = new DOMParser().parseFromString(xmlStr, 'text/xml');
+    if (doc.querySelector('parsererror')) return [];
+    const isAtom = !!doc.querySelector('feed');
+    const nodes = Array.from(doc.querySelectorAll(isAtom ? 'entry' : 'item')).slice(0, 30);
+    return nodes.map(node => {
+      const text = sel => node.querySelector(sel)?.textContent?.trim() || '';
+      const nsText = (uri, local) => node.getElementsByTagNameNS(uri, local)[0]?.textContent?.trim() || '';
+      let link, pubDate;
+      if (isAtom) {
+        link = node.querySelector('link[rel="alternate"]')?.getAttribute('href')
+          || node.querySelector('link:not([rel="self"])')?.getAttribute('href')
+          || node.querySelector('link')?.getAttribute('href') || '';
+        pubDate = text('published') || text('updated');
+      } else {
+        const linkEl = node.querySelector('link');
+        link = linkEl?.getAttribute('href') || linkEl?.textContent?.trim() || '';
+        pubDate = text('pubDate');
+      }
+      const description = isAtom
+        ? (text('content') || text('summary'))
+        : (nsText('http://purl.org/rss/1.0/modules/content/', 'encoded') || text('description'));
+      const author = isAtom
+        ? text('author name')
+        : (nsText('http://purl.org/dc/elements/1.1/', 'creator') || text('author'));
+      return parseRssItem({
+        title: text('title') || '(No title)',
+        link, pubDate, description, author,
+        guid: text('id') || text('guid') || link,
+      }, source);
+    });
+  } catch { return []; }
+}
+
 function parseRssItem(item, source) {
-  const pub = item.pubDate ? new Date(item.pubDate) : null;
+  // iOS Safari needs strict ISO-8601; normalize "2026-02-28 14:30:00" → "2026-02-28T14:30:00"
+  const raw = item.pubDate ? String(item.pubDate).trim().replace(' ', 'T') : null;
+  const parsed = raw ? new Date(raw) : null;
+  const pub = parsed && !isNaN(parsed.getTime()) ? parsed : null;
   let summary = stripHtml(item.description || item.content || item.summary || '');
   if (summary.length > 400) summary = summary.slice(0, 400).trimEnd() + '…';
 
