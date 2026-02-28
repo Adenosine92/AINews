@@ -92,9 +92,10 @@ function switchTab(tabId) {
     panel.classList.toggle('active', active);
     panel.hidden = !active;
   });
-  if (tabId === 'sources')  renderSources();
-  if (tabId === 'settings') renderSettings();
+  if (tabId === 'sources')   renderSources();
+  if (tabId === 'settings')  renderSettings();
   if (tabId === 'bookmarks') renderBookmarks();
+  if (tabId === 'report')    generateReport();
 }
 
 /* ── Time Helpers ────────────────────────────────────────────────────────── */
@@ -110,6 +111,11 @@ function timeAgo(date) {
 function formatDate(date) {
   if (!date) return '';
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatTime(date) {
+  if (!date) return '';
+  return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
 /* ── RSS Fetching ────────────────────────────────────────────────────────── */
@@ -217,8 +223,11 @@ function inferTags(text) {
   return tags;
 }
 
-async function fetchAllNews() {
-  // Check cache
+async function fetchAllNews(isManual = false) {
+  // Snapshot article IDs before refresh (to detect new articles)
+  const prevIds = new Set(state.articles.map(a => a.id));
+
+  // Check cache first (populate while live fetch runs)
   try {
     const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
     if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
@@ -251,6 +260,22 @@ async function fetchAllNews() {
   setLoading(false);
   renderFeed();
   updateRefreshedLabel();
+
+  // Show "no new articles" banner only on manual refresh when we had articles before
+  if (isManual && prevIds.size > 0) {
+    const newCount = state.articles.filter(a => !prevIds.has(a.id)).length;
+    if (newCount === 0) showNoNewBanner();
+  }
+}
+
+function showNoNewBanner() {
+  const banner = document.getElementById('noNewBanner');
+  banner.hidden = false;
+  // Remove and re-add to restart animation
+  banner.style.animation = 'none';
+  banner.offsetHeight; // reflow
+  banner.style.animation = '';
+  setTimeout(() => { banner.hidden = true; }, 3200);
 }
 
 function setLoading(loading) {
@@ -261,8 +286,15 @@ function setLoading(loading) {
 }
 
 function updateRefreshedLabel() {
-  const el = document.getElementById('lastRefreshed');
-  el.textContent = state.lastRefreshed ? `Updated ${timeAgo(state.lastRefreshed)}` : '';
+  const t = state.lastRefreshed;
+  const label = t ? `Updated ${timeAgo(t)}` : '';
+  document.getElementById('lastRefreshed').textContent = label;
+
+  // Also update the Report tab refresh time
+  const reportTime = document.getElementById('reportRefreshTime');
+  if (reportTime) {
+    reportTime.textContent = t ? `Last refreshed at ${formatTime(t)}` : '';
+  }
 }
 
 /* ── Filtering ───────────────────────────────────────────────────────────── */
@@ -290,10 +322,12 @@ function renderFeed() {
   const list = document.getElementById('articleList');
   const filtered = getFilteredArticles();
 
-  // Stats
+  // Stats bar
   const statsEl = document.getElementById('feedStats');
   if (state.articles.length > 0) {
-    statsEl.textContent = `${filtered.length} of ${state.articles.length} articles`;
+    const t = state.lastRefreshed;
+    const timeStr = t ? ` · Refreshed ${timeAgo(t)}` : '';
+    statsEl.textContent = `${filtered.length} of ${state.articles.length} articles${timeStr}`;
     statsEl.hidden = false;
   } else {
     statsEl.hidden = true;
@@ -311,7 +345,7 @@ function renderFeed() {
   updateBookmarkBadge();
 }
 
-function articleCardHTML(article, mini = false) {
+function articleCardHTML(article) {
   const bookmarked = state.bookmarks.has(article.url);
   const tagsHtml = article.tags.slice(0, 3).map(t => `<span class="tag">${t}</span>`).join('');
   return `
@@ -421,16 +455,7 @@ function renderBookmarks() {
   document.getElementById('clearBookmarksBtn').hidden = bookmarked.length === 0;
 }
 
-/* ── Quick Report ────────────────────────────────────────────────────────── */
-function periodCutoff(period) {
-  const now = new Date();
-  if (period === 'hour') return new Date(now - 60 * 60 * 1000);
-  if (period === 'today') {
-    const d = new Date(now); d.setHours(0, 0, 0, 0); return d;
-  }
-  return new Date(now - 7 * 24 * 60 * 60 * 1000); // week
-}
-
+/* ── Daily Digest (Written Report) ──────────────────────────────────────── */
 function categoriseArticle(article) {
   const text = (article.title + ' ' + article.summary).toLowerCase();
   let best = null, bestScore = 0;
@@ -441,16 +466,51 @@ function categoriseArticle(article) {
   return best || REPORT_CATEGORIES[3]; // default: Products
 }
 
+function generateDigestParagraph(group) {
+  const arts = group.articles;
+  const uniqueSources = [...new Set(arts.map(a => a.source))];
+  const count = arts.length;
+
+  if (count === 1) {
+    return `${escHtml(arts[0].source)} reported on "${escHtml(arts[0].title)}."`;
+  }
+
+  const srcList = uniqueSources.slice(0, 3);
+  const srcStr = srcList.length > 1
+    ? `${srcList.slice(0, -1).map(escHtml).join(', ')} and ${escHtml(srcList[srcList.length - 1])}`
+    : escHtml(srcList[0]);
+
+  const topTitles = arts.slice(0, 2).map(a => `"${escHtml(a.title)}"`).join(' and ');
+  const more = count > 2 ? ` — plus ${count - 2} more article${count - 2 !== 1 ? 's' : ''} across ${uniqueSources.length} source${uniqueSources.length !== 1 ? 's' : ''}` : '';
+
+  return `${srcStr} covered ${count} development${count !== 1 ? 's' : ''} today, including ${topTitles}${more}.`;
+}
+
 function generateReport() {
-  const cutoff = periodCutoff(state.reportPeriod);
-  const inPeriod = state.articles.filter(a => a.publishedAt && a.publishedAt >= cutoff);
+  // Update the refresh time display
+  updateRefreshedLabel();
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const inPeriod = state.articles.filter(a => a.publishedAt && a.publishedAt >= today);
+
+  if (state.articles.length === 0) {
+    document.getElementById('reportContent').innerHTML = `
+      <div class="empty-state">
+        <span class="empty-icon">📡</span>
+        <h3>No articles loaded</h3>
+        <p>Switch to the Feed tab and wait for articles to load, then come back here.</p>
+      </div>`;
+    document.getElementById('exportReportBtn').hidden = true;
+    return;
+  }
 
   if (inPeriod.length === 0) {
     document.getElementById('reportContent').innerHTML = `
       <div class="empty-state">
         <span class="empty-icon">📭</span>
-        <h3>No articles in this period</h3>
-        <p>Try a wider time range or refresh the feed first.</p>
+        <h3>No articles today</h3>
+        <p>Nothing published today yet. Check back later or use the Feed for recent news.</p>
       </div>`;
     document.getElementById('exportReportBtn').hidden = true;
     return;
@@ -464,58 +524,33 @@ function generateReport() {
     groups[cat.id].articles.push(a);
   }
 
-  // Top sources
-  const sourceCounts = {};
-  inPeriod.forEach(a => { sourceCounts[a.source] = (sourceCounts[a.source] || 0) + 1; });
-  const topSources = Object.entries(sourceCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([name]) => name);
+  const uniqueSources = new Set(inPeriod.map(a => a.source)).size;
+  const dateStr = today.toLocaleDateString(undefined, {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+  });
 
-  state.currentReport = { inPeriod, groups, topSources };
-
-  const periodLabel = { hour: 'Last Hour', today: 'Today', week: 'This Week' }[state.reportPeriod];
-  const sourcesHtml = topSources.map(s => `<span class="source-chip">${escHtml(s)}</span>`).join('');
+  state.currentReport = { inPeriod, groups };
 
   const sectionsHtml = Object.values(groups)
     .sort((a, b) => b.articles.length - a.articles.length)
     .map(group => {
-      const top5 = group.articles.slice(0, 5);
-      const rowsHtml = top5.map(a => `
-        <div class="report-article-row" data-url="${escHtml(a.url)}" role="button" tabindex="0">
-          <div style="flex:1">
-            <div class="report-article-title">${escHtml(a.title)}</div>
-            <div class="report-article-source">${escHtml(a.source)} · ${timeAgo(a.publishedAt)}</div>
-          </div>
-        </div>`).join('');
+      const para = generateDigestParagraph(group);
+      const linksHtml = group.articles.slice(0, 5).map(a =>
+        `<a class="digest-link" href="${escHtml(a.url)}" target="_blank" rel="noopener noreferrer">${escHtml(a.title)}</a>`
+      ).join('');
       return `
-        <div class="report-section">
-          <div class="report-section-header">
-            <div class="report-category-label"><span>${group.emoji}</span>${escHtml(group.label)}</div>
-            <div class="report-headline">${escHtml(group.articles[0].title)}</div>
-            <div class="report-summary">${group.articles.length} article${group.articles.length !== 1 ? 's' : ''} · Top sources: ${escHtml(group.articles.slice(0, 3).map(a => a.source).join(', '))}</div>
-          </div>
-          <div class="report-articles">${rowsHtml}</div>
+        <div class="digest-section">
+          <div class="digest-section-title">${group.emoji} ${escHtml(group.label)}</div>
+          <p class="digest-paragraph">${para}</p>
+          <div class="digest-links">${linksHtml}</div>
         </div>`;
     }).join('');
 
   document.getElementById('reportContent').innerHTML = `
-    <div class="report-meta">
-      <div class="report-stat">
-        <span class="report-stat-value">${inPeriod.length}</span>
-        <span class="report-stat-label">Articles</span>
-      </div>
-      <div class="report-stat">
-        <span class="report-stat-value">${Object.keys(groups).length}</span>
-        <span class="report-stat-label">Categories</span>
-      </div>
-      <div class="report-stat">
-        <span class="report-stat-value">${topSources.length}</span>
-        <span class="report-stat-label">Sources</span>
-      </div>
+    <div class="digest-header">
+      <div class="digest-date">${dateStr}</div>
+      <div class="digest-summary">${inPeriod.length} articles · ${uniqueSources} source${uniqueSources !== 1 ? 's' : ''} · ${Object.keys(groups).length} topic${Object.keys(groups).length !== 1 ? 's' : ''}</div>
     </div>
-    <div style="margin-bottom:4px;font-size:12px;color:var(--text-ter);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Top Sources</div>
-    <div class="top-sources">${sourcesHtml}</div>
     ${sectionsHtml}`;
 
   document.getElementById('exportReportBtn').hidden = false;
@@ -523,23 +558,28 @@ function generateReport() {
 
 function exportReport() {
   if (!state.currentReport) return;
-  const { inPeriod, groups, topSources } = state.currentReport;
-  const period = { hour: 'Last Hour', today: 'Today', week: 'This Week' }[state.reportPeriod];
-  let md = `# AI News Quick Report — ${period}\n\n`;
+  const { inPeriod, groups } = state.currentReport;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dateStr = today.toLocaleDateString(undefined, {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+  });
+
+  let md = `# Pulse AI — Daily Digest\n## ${dateStr}\n\n`;
   md += `**Generated:** ${new Date().toLocaleString()}\n`;
-  md += `**Total articles:** ${inPeriod.length}\n`;
-  md += `**Top sources:** ${topSources.join(', ')}\n\n---\n\n`;
+  md += `**Total articles today:** ${inPeriod.length}\n\n---\n\n`;
   for (const group of Object.values(groups).sort((a, b) => b.articles.length - a.articles.length)) {
     md += `## ${group.emoji} ${group.label}\n\n`;
+    md += generateDigestParagraph(group).replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"') + '\n\n';
     group.articles.slice(0, 5).forEach(a => {
-      md += `- **${a.title}** — *${a.source}* (${timeAgo(a.publishedAt)})\n  ${a.url}\n`;
+      md += `- **${a.title}** — *${a.source}*\n  ${a.url}\n`;
     });
     md += '\n';
   }
   const blob = new Blob([md], { type: 'text/markdown' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `ai-news-report-${state.reportPeriod}-${Date.now()}.md`;
+  a.download = `pulse-ai-digest-${today.toISOString().slice(0, 10)}.md`;
   a.click();
 }
 
@@ -595,9 +635,9 @@ function renderSettings() {
     <div class="settings-section">
       <div class="settings-section-title">App Info</div>
       <div class="settings-row">
-        <span class="settings-row-icon">🤖</span>
-        <span class="settings-row-label">AI News Aggregator</span>
-        <span class="settings-row-value">v1.0</span>
+        <span class="settings-row-icon">⚡</span>
+        <span class="settings-row-label">Pulse AI</span>
+        <span class="settings-row-value">v1.1</span>
       </div>
       <div class="settings-row">
         <span class="settings-row-icon">📡</span>
@@ -680,7 +720,7 @@ function renderSettings() {
       <div class="settings-row">
         <span class="settings-row-icon">🕐</span>
         <span class="settings-row-label">Last Refreshed</span>
-        <span class="settings-row-value">${state.lastRefreshed ? timeAgo(state.lastRefreshed) : 'Never'}</span>
+        <span class="settings-row-value">${state.lastRefreshed ? formatTime(state.lastRefreshed) : 'Never'}</span>
       </div>
       <div class="settings-row danger" style="cursor:pointer" id="clearDataBtn">
         <span class="settings-row-icon">🗑️</span>
@@ -742,7 +782,7 @@ let autoRefreshTimer = null;
 function setupAutoRefresh() {
   clearInterval(autoRefreshTimer);
   if (state.settings.autoRefresh) {
-    autoRefreshTimer = setInterval(fetchAllNews, state.settings.refreshInterval * 60 * 1000);
+    autoRefreshTimer = setInterval(() => fetchAllNews(false), state.settings.refreshInterval * 60 * 1000);
   }
 }
 
@@ -754,8 +794,8 @@ function initEvents() {
     if (btn) switchTab(btn.dataset.tab);
   });
 
-  // Refresh
-  document.getElementById('refreshBtn').addEventListener('click', fetchAllNews);
+  // Refresh (manual — pass true to trigger no-new detection)
+  document.getElementById('refreshBtn').addEventListener('click', () => fetchAllNews(true));
 
   // Theme toggle
   document.getElementById('themeToggle').addEventListener('click', () => {
@@ -809,22 +849,9 @@ function initEvents() {
     renderBookmarks();
   });
 
-  // Quick report period
-  document.querySelector('.period-selector').addEventListener('click', e => {
-    const btn = e.target.closest('.period-btn');
-    if (!btn) return;
-    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    state.reportPeriod = btn.dataset.period;
-  });
+  // Daily Digest generate/refresh
   document.getElementById('generateReportBtn').addEventListener('click', generateReport);
   document.getElementById('exportReportBtn').addEventListener('click', exportReport);
-
-  // Report article click
-  document.getElementById('reportContent').addEventListener('click', e => {
-    const row = e.target.closest('.report-article-row');
-    if (row && row.dataset.url) openArticle(row.dataset.url);
-  });
 
   // Sources search
   document.getElementById('sourcesSearch').addEventListener('input', e => renderSources(e.target.value));
@@ -877,7 +904,7 @@ function init() {
   applyTheme(state.settings.theme);
   initEvents();
   setupAutoRefresh();
-  fetchAllNews();
+  fetchAllNews(false);
 }
 
 document.addEventListener('DOMContentLoaded', init);
