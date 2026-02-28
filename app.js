@@ -26,8 +26,11 @@ const STORAGE_KEYS = {
   settings:  'ai_news_settings',
 };
 
-// allorigins.win — free CORS proxy, no API key, no rate limits
-const CORS_PROXY = 'https://api.allorigins.win/get?url=';
+// CORS proxies (tried in order until one works)
+const CORS_PROXIES = [
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,          // raw response
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, // raw response
+];
 
 /* ── Persistence ─────────────────────────────────────────────────────────── */
 function loadStorage() {
@@ -110,21 +113,28 @@ function formatDate(date) {
 }
 
 /* ── RSS Fetching ────────────────────────────────────────────────────────── */
-async function fetchSource(source) {
-  const url = CORS_PROXY + encodeURIComponent(source.feedURL);
+async function fetchWithProxy(proxyUrl) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
   try {
-    const res = await fetch(url, { signal: controller.signal });
+    const res = await fetch(proxyUrl, { signal: controller.signal });
     clearTimeout(timer);
-    if (!res.ok) return [];
-    const data = await res.json();
-    if (!data.contents) return [];
-    return parseFeed(data.contents, source);
+    return res.ok ? await res.text() : null;
   } catch {
     clearTimeout(timer);
-    return [];
+    return null;
   }
+}
+
+async function fetchSource(source) {
+  for (const makeUrl of CORS_PROXIES) {
+    const xml = await fetchWithProxy(makeUrl(source.feedURL));
+    if (xml) {
+      const items = parseFeed(xml, source);
+      if (items.length > 0) return items;
+    }
+  }
+  return [];
 }
 
 function parseFeed(xmlStr, source) {
