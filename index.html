@@ -3,26 +3,83 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="AI News Aggregator — Stay current with the latest in artificial intelligence from 13+ sources including OpenAI, Anthropic, Google DeepMind, ArXiv, and more.">
-  <title>AI News Aggregator</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+
+  <!-- Primary meta -->
+  <title>Pulse AI — Daily AI News Digest</title>
+  <meta name="description" content="Stay ahead of artificial intelligence with Pulse AI's daily digest. OpenAI, Anthropic, Google DeepMind, ArXiv and 10+ top sources — curated and summarised every day.">
+  <meta name="application-name" content="Pulse AI">
+  <meta name="theme-color" content="#0a84ff">
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Pulse AI">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Pulse AI — Daily AI News Digest">
+  <meta property="og:description" content="Stay ahead of artificial intelligence with Pulse AI's daily digest. OpenAI, Anthropic, Google DeepMind, ArXiv and 10+ top sources — curated and summarised every day.">
+  <meta property="og:image" content="og-image.svg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="Pulse AI">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Pulse AI — Daily AI News Digest">
+  <meta name="twitter:description" content="Stay ahead of artificial intelligence with Pulse AI's daily digest. OpenAI, Anthropic, Google DeepMind, ArXiv and 10+ top sources.">
+  <meta name="twitter:image" content="og-image.svg">
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230a84ff'/><polyline points='12,55 26,55 35,26 46,76 56,40 65,61 74,55 88,55' stroke='white' stroke-width='7' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>">
+
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="app">
 
+    <!-- A2HS Install Banner -->
+    <div id="installBanner" class="install-banner" hidden>
+      <div class="install-banner-left">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="36" height="36" class="install-banner-icon">
+          <rect width="32" height="32" rx="8" fill="#0a84ff"/>
+          <polyline points="3,17 8,17 11,8 15,24 18,12 21,19 24,17 29,17" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+        <div class="install-banner-text">
+          <strong>Add Pulse AI to Home Screen</strong>
+          <span>Access instantly, like a native app</span>
+        </div>
+      </div>
+      <div class="install-banner-right">
+        <button id="installBtn" class="btn-install">Install</button>
+        <button id="dismissInstallBtn" class="btn-icon install-dismiss" aria-label="Dismiss">✕</button>
+      </div>
+    </div>
+
     <!-- Header -->
     <header class="app-header">
       <div class="header-left">
-        <span class="app-logo">🤖</span>
+        <span class="app-logo">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="30" height="30">
+            <rect width="32" height="32" rx="8" fill="#0a84ff"/>
+            <polyline points="3,17 8,17 11,8 15,24 18,12 21,19 24,17 29,17" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+        </span>
         <div class="app-title-group">
-          <h1 class="app-title">AI News</h1>
+          <h1 class="app-title">Pulse AI</h1>
           <span id="lastRefreshed" class="last-refreshed"></span>
         </div>
       </div>
       <div class="header-right">
         <button id="refreshBtn" class="btn-icon" title="Refresh feeds">
-          <span id="refreshIcon" class="icon-refresh">↻</span>
+          <svg id="refreshIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="1 4 1 10 7 10"/>
+            <polyline points="23 20 23 14 17 14"/>
+            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/>
+          </svg>
         </button>
         <button id="themeToggle" class="btn-icon" title="Toggle theme">
           <span id="themeIcon">🌙</span>
@@ -38,7 +95,7 @@
       </button>
       <button class="tab-btn" data-tab="report" role="tab" aria-selected="false">
         <span class="tab-icon">⚡</span>
-        <span class="tab-label">Report</span>
+        <span class="tab-label">Digest</span>
       </button>
       <button class="tab-btn" data-tab="bookmarks" role="tab" aria-selected="false">
         <span class="tab-icon">🔖</span>
@@ -60,6 +117,26 @@
 
       <!-- ── Feed Tab ── -->
       <section id="tab-feed" class="tab-panel active" role="tabpanel">
+        <div id="noNewBanner" class="no-new-banner" hidden>
+          <span>✓ All caught up — no new articles since last refresh</span>
+        </div>
+
+        <!-- Newsletter subscribe card -->
+        <div id="newsletterCard" class="newsletter-card" hidden>
+          <div class="newsletter-card-body">
+            <div class="newsletter-card-title">
+              <span>✉️</span>
+              <strong>Get the daily digest in your inbox</strong>
+            </div>
+            <p class="newsletter-card-desc">Subscribe to receive Pulse AI's written AI summary every morning.</p>
+            <div class="newsletter-form">
+              <input type="email" id="newsletterEmail" class="newsletter-input" placeholder="your@email.com" autocomplete="email">
+              <button id="newsletterSubscribeBtn" class="btn-primary newsletter-btn">Subscribe</button>
+            </div>
+          </div>
+          <button id="dismissNewsletterBtn" class="btn-icon newsletter-dismiss" aria-label="Dismiss">✕</button>
+        </div>
+
         <div class="feed-controls">
           <div class="search-wrapper">
             <span class="search-icon">🔍</span>
@@ -89,27 +166,32 @@
         </div>
       </section>
 
-      <!-- ── Quick Report Tab ── -->
+      <!-- ── Daily Digest Tab ── -->
       <section id="tab-report" class="tab-panel" role="tabpanel" hidden>
         <div class="report-top">
           <div class="report-title-row">
-            <h2>Quick Report</h2>
-            <button id="exportReportBtn" class="btn-secondary" hidden>Export ↓</button>
-          </div>
-          <div class="report-controls">
-            <div class="period-selector" role="group" aria-label="Report period">
-              <button class="period-btn" data-period="hour">Last Hour</button>
-              <button class="period-btn active" data-period="today">Today</button>
-              <button class="period-btn" data-period="week">This Week</button>
+            <h2>Daily Digest</h2>
+            <div class="report-title-actions">
+              <button id="shareDigestBtn" class="btn-secondary" hidden title="Share digest">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:4px">
+                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                  <polyline points="16 6 12 2 8 6"/>
+                  <line x1="12" y1="2" x2="12" y2="15"/>
+                </svg>Share
+              </button>
+              <button id="exportReportBtn" class="btn-secondary" hidden>Export ↓</button>
             </div>
-            <button id="generateReportBtn" class="btn-primary">Generate</button>
+          </div>
+          <div class="report-meta-bar">
+            <span id="reportRefreshTime" class="report-refresh-time"></span>
+            <button id="generateReportBtn" class="btn-primary">Refresh</button>
           </div>
         </div>
         <div id="reportContent" class="report-content">
           <div class="empty-state">
             <span class="empty-icon">⚡</span>
-            <h3>No report yet</h3>
-            <p>Select a time period and click Generate to see a categorised AI news summary.</p>
+            <h3>No digest yet</h3>
+            <p>Switch here after loading the feed to see today's written AI summary.</p>
           </div>
         </div>
       </section>
@@ -162,7 +244,13 @@
         <div id="modalSourceBadge" class="modal-source-badge"></div>
         <div class="modal-actions">
           <button id="modalBookmarkBtn" class="btn-icon" title="Bookmark">🔖</button>
-          <button id="modalShareBtn" class="btn-icon" title="Share">↗</button>
+          <button id="modalShareBtn" class="btn-icon" title="Share">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+              <polyline points="16 6 12 2 8 6"/>
+              <line x1="12" y1="2" x2="12" y2="15"/>
+            </svg>
+          </button>
           <button id="closeModalBtn" class="btn-icon close-btn" aria-label="Close">✕</button>
         </div>
       </div>

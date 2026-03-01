@@ -164,8 +164,8 @@ img { max-width: 100%; }
 .btn-text.danger { color: var(--danger); }
 .btn-text:hover { opacity: .75; }
 
-.icon-refresh { display: inline-block; font-size: 20px; }
-.icon-refresh.spinning { animation: spin .8s linear infinite; }
+#refreshIcon { display: block; }
+#refreshIcon.spinning { animation: spin .8s linear infinite; transform-origin: center; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Tab Navigation ──────────────────────────────────────────────────────── */
@@ -432,32 +432,44 @@ img { max-width: 100%; }
 }
 .section-header h2 { font-size: 20px; font-weight: 700; }
 
+/* ── No New Articles Banner ──────────────────────────────────────────────── */
+.no-new-banner {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--text-sec);
+  text-align: center;
+  margin-bottom: 12px;
+  animation: fadeInOut 3s ease forwards;
+}
+@keyframes fadeInOut {
+  0%   { opacity: 0; transform: translateY(-6px); }
+  15%  { opacity: 1; transform: translateY(0); }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 /* ── Quick Report ────────────────────────────────────────────────────────── */
 .report-top { margin-bottom: 16px; }
 .report-title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 .report-title-row h2 { font-size: 20px; font-weight: 700; }
 
-.report-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-
-.period-selector { display: flex; background: var(--pill-bg); border-radius: 20px; padding: 3px; }
-
-.period-btn {
-  padding: 6px 14px;
-  border-radius: 17px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-sec);
-  transition: background var(--transition), color var(--transition);
+.report-meta-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
-.period-btn.active {
-  background: var(--bg-card);
-  color: var(--text);
-  box-shadow: var(--shadow-sm);
+.report-refresh-time {
+  font-size: 12px;
+  color: var(--text-ter);
 }
 
 .report-content { display: flex; flex-direction: column; gap: 12px; }
@@ -535,6 +547,72 @@ img { max-width: 100%; }
   margin-top: 2px;
 }
 .report-article-title { font-size: 13px; font-weight: 500; color: var(--text); flex: 1; }
+
+/* ── Daily Digest (Written Report) ──────────────────────────────────────── */
+.digest-header {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 4px;
+}
+.digest-date {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+.digest-summary {
+  font-size: 12px;
+  color: var(--text-ter);
+  margin-top: 4px;
+}
+
+.digest-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.digest-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: var(--text-sec);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.digest-paragraph {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+.digest-links {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.digest-link {
+  font-size: 13px;
+  color: var(--accent);
+  line-height: 1.4;
+  padding: 2px 0;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.digest-link:hover { text-decoration: underline; }
 
 /* ── Bookmarks ───────────────────────────────────────────────────────────── */
 /* reuses .article-list and .article-card */
@@ -763,6 +841,86 @@ img { max-width: 100%; }
   border-top: 1px solid var(--border);
   flex-shrink: 0;
 }
+
+/* ── Install Banner (A2HS) ───────────────────────────────────────────────── */
+.install-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: linear-gradient(135deg, #003fa3 0%, #0a84ff 100%);
+  padding: 12px 16px;
+  flex-wrap: wrap;
+}
+.install-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.install-banner-icon { flex-shrink: 0; border-radius: 8px; overflow: hidden; }
+.install-banner-text { display: flex; flex-direction: column; gap: 2px; }
+.install-banner-text strong { font-size: 14px; font-weight: 600; color: #fff; }
+.install-banner-text span  { font-size: 12px; color: rgba(255,255,255,.75); }
+.install-banner-right { display: flex; align-items: center; gap: 8px; }
+.btn-install {
+  background: rgba(255,255,255,.2);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.35);
+  border-radius: var(--radius-sm);
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition);
+}
+.btn-install:hover { background: rgba(255,255,255,.3); }
+.install-dismiss { color: rgba(255,255,255,.7); font-size: 16px; }
+
+/* ── Newsletter Card ─────────────────────────────────────────────────────── */
+.newsletter-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.newsletter-card-body { flex: 1; min-width: 0; }
+.newsletter-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.newsletter-card-title strong { font-size: 14px; font-weight: 600; color: var(--text); }
+.newsletter-card-desc { font-size: 13px; color: var(--text-sec); margin-bottom: 10px; line-height: 1.4; }
+.newsletter-form { display: flex; gap: 8px; flex-wrap: wrap; }
+.newsletter-input {
+  flex: 1;
+  min-width: 160px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text);
+  font-size: 14px;
+}
+.newsletter-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.newsletter-btn { padding: 8px 16px; font-size: 13px; white-space: nowrap; }
+.newsletter-dismiss { align-self: flex-start; color: var(--text-ter); }
+
+/* ── Report title actions ────────────────────────────────────────────────── */
+.report-title-actions { display: flex; gap: 8px; align-items: center; }
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (min-width: 640px) {

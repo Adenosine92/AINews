@@ -1,0 +1,35 @@
+{
+  "name": "Pulse AI",
+  "short_name": "Pulse AI",
+  "description": "Daily AI news digest from OpenAI, Anthropic, Google DeepMind, ArXiv and 10+ top sources.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a84ff",
+  "theme_color": "#0a84ff",
+  "categories": ["news", "productivity"],
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Daily Digest",
+      "short_name": "Digest",
+      "description": "Open today's written AI summary",
+      "url": "./#digest",
+      "icons": [{ "src": "icons/icon.svg", "sizes": "any" }]
+    }
+  ]
+}
