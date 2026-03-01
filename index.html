@@ -3,13 +3,61 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Pulse AI — Your daily digest of artificial intelligence news from OpenAI, Anthropic, Google DeepMind, ArXiv, and 10+ more sources.">
-  <title>Pulse AI</title>
+
+  <!-- Primary meta -->
+  <title>Pulse AI — Daily AI News Digest</title>
+  <meta name="description" content="Stay ahead of artificial intelligence with Pulse AI's daily digest. OpenAI, Anthropic, Google DeepMind, ArXiv and 10+ top sources — curated and summarised every day.">
+  <meta name="application-name" content="Pulse AI">
+  <meta name="theme-color" content="#0a84ff">
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Pulse AI">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Pulse AI — Daily AI News Digest">
+  <meta property="og:description" content="Stay ahead of artificial intelligence with Pulse AI's daily digest. OpenAI, Anthropic, Google DeepMind, ArXiv and 10+ top sources — curated and summarised every day.">
+  <meta property="og:image" content="og-image.svg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="Pulse AI">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Pulse AI — Daily AI News Digest">
+  <meta name="twitter:description" content="Stay ahead of artificial intelligence with Pulse AI's daily digest. OpenAI, Anthropic, Google DeepMind, ArXiv and 10+ top sources.">
+  <meta name="twitter:image" content="og-image.svg">
+
+  <!-- Favicon -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230a84ff'/><polyline points='12,55 26,55 35,26 46,76 56,40 65,61 74,55 88,55' stroke='white' stroke-width='7' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>">
+
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="app">
+
+    <!-- A2HS Install Banner -->
+    <div id="installBanner" class="install-banner" hidden>
+      <div class="install-banner-left">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="36" height="36" class="install-banner-icon">
+          <rect width="32" height="32" rx="8" fill="#0a84ff"/>
+          <polyline points="3,17 8,17 11,8 15,24 18,12 21,19 24,17 29,17" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+        <div class="install-banner-text">
+          <strong>Add Pulse AI to Home Screen</strong>
+          <span>Access instantly, like a native app</span>
+        </div>
+      </div>
+      <div class="install-banner-right">
+        <button id="installBtn" class="btn-install">Install</button>
+        <button id="dismissInstallBtn" class="btn-icon install-dismiss" aria-label="Dismiss">✕</button>
+      </div>
+    </div>
 
     <!-- Header -->
     <header class="app-header">
@@ -72,6 +120,23 @@
         <div id="noNewBanner" class="no-new-banner" hidden>
           <span>✓ All caught up — no new articles since last refresh</span>
         </div>
+
+        <!-- Newsletter subscribe card -->
+        <div id="newsletterCard" class="newsletter-card" hidden>
+          <div class="newsletter-card-body">
+            <div class="newsletter-card-title">
+              <span>✉️</span>
+              <strong>Get the daily digest in your inbox</strong>
+            </div>
+            <p class="newsletter-card-desc">Subscribe to receive Pulse AI's written AI summary every morning.</p>
+            <div class="newsletter-form">
+              <input type="email" id="newsletterEmail" class="newsletter-input" placeholder="your@email.com" autocomplete="email">
+              <button id="newsletterSubscribeBtn" class="btn-primary newsletter-btn">Subscribe</button>
+            </div>
+          </div>
+          <button id="dismissNewsletterBtn" class="btn-icon newsletter-dismiss" aria-label="Dismiss">✕</button>
+        </div>
+
         <div class="feed-controls">
           <div class="search-wrapper">
             <span class="search-icon">🔍</span>
@@ -106,7 +171,16 @@
         <div class="report-top">
           <div class="report-title-row">
             <h2>Daily Digest</h2>
-            <button id="exportReportBtn" class="btn-secondary" hidden>Export ↓</button>
+            <div class="report-title-actions">
+              <button id="shareDigestBtn" class="btn-secondary" hidden title="Share digest">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:4px">
+                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                  <polyline points="16 6 12 2 8 6"/>
+                  <line x1="12" y1="2" x2="12" y2="15"/>
+                </svg>Share
+              </button>
+              <button id="exportReportBtn" class="btn-secondary" hidden>Export ↓</button>
+            </div>
           </div>
           <div class="report-meta-bar">
             <span id="reportRefreshTime" class="report-refresh-time"></span>

@@ -8,6 +8,7 @@ const state = {
     autoRefresh: false,
     refreshInterval: 15,
     twitterToken: '',
+    newsletterUrl: '',
   },
   filter: 'all',
   search: '',
@@ -554,6 +555,7 @@ function generateReport() {
     ${sectionsHtml}`;
 
   document.getElementById('exportReportBtn').hidden = false;
+  document.getElementById('shareDigestBtn').hidden = false;
 }
 
 function exportReport() {
@@ -651,6 +653,35 @@ function renderSettings() {
       </div>
     </div>
 
+    <!-- Newsletter -->
+    <div class="settings-section">
+      <div class="settings-section-title">Newsletter</div>
+      <div class="settings-row" style="flex-wrap:wrap;gap:8px">
+        <span class="settings-row-icon">✉️</span>
+        <span class="settings-row-label">Sign-up URL</span>
+        <input
+          type="url"
+          id="newsletterUrlInput"
+          class="settings-input"
+          placeholder="https://your-newsletter.beehiiv.com/subscribe"
+          value="${escHtml(s.newsletterUrl)}"
+          style="flex-basis:100%;margin-top:4px"
+        >
+      </div>
+      <div class="settings-row" style="flex-wrap:wrap;padding-bottom:0">
+        <span class="settings-row-icon" style="opacity:0.4">💡</span>
+        <span class="settings-row-label" style="font-size:12px;color:var(--text-ter);flex:1">
+          Paste your Beehiiv, Mailchimp, Buttondown, or ConvertKit sign-up page URL.
+          Subscribers are redirected there with their email pre-filled.
+        </span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-row-icon">📋</span>
+        <span class="settings-row-label">Subscribe card</span>
+        <button class="btn-text" id="resetNewsletterCard" style="font-size:13px">Show again</button>
+      </div>
+    </div>
+
     <!-- Twitter -->
     <div class="settings-section">
       <div class="settings-section-title">X (Twitter) Integration</div>
@@ -745,6 +776,14 @@ function renderSettings() {
   `;
 
   // Bind settings events
+  document.getElementById('newsletterUrlInput').addEventListener('change', e => {
+    state.settings.newsletterUrl = e.target.value.trim();
+    saveSettings();
+  });
+  document.getElementById('resetNewsletterCard').addEventListener('click', () => {
+    localStorage.removeItem(NEWSLETTER_DISMISSED_KEY);
+    document.getElementById('newsletterCard').hidden = false;
+  });
   document.getElementById('twitterTokenInput').addEventListener('change', e => {
     state.settings.twitterToken = e.target.value.trim();
     saveSettings();
@@ -849,9 +888,10 @@ function initEvents() {
     renderBookmarks();
   });
 
-  // Daily Digest generate/refresh
+  // Daily Digest generate/refresh/share
   document.getElementById('generateReportBtn').addEventListener('click', generateReport);
   document.getElementById('exportReportBtn').addEventListener('click', exportReport);
+  document.getElementById('shareDigestBtn').addEventListener('click', shareDigest);
 
   // Sources search
   document.getElementById('sourcesSearch').addEventListener('input', e => renderSources(e.target.value));
@@ -898,11 +938,121 @@ function handleArticleListClick(e) {
   if (card && card.dataset.url) openArticle(card.dataset.url);
 }
 
+/* ── Service Worker Registration ─────────────────────────────────────────── */
+function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+/* ── A2HS Install Prompt ─────────────────────────────────────────────────── */
+let deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  // Show install banner unless user dismissed it before
+  if (!localStorage.getItem('pulse_install_dismissed')) {
+    document.getElementById('installBanner').hidden = false;
+  }
+});
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('installBanner').hidden = true;
+  deferredInstallPrompt = null;
+});
+
+function initInstallBanner() {
+  document.getElementById('installBtn').addEventListener('click', async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    if (outcome === 'accepted') document.getElementById('installBanner').hidden = true;
+    deferredInstallPrompt = null;
+  });
+  document.getElementById('dismissInstallBtn').addEventListener('click', () => {
+    document.getElementById('installBanner').hidden = true;
+    localStorage.setItem('pulse_install_dismissed', '1');
+  });
+}
+
+/* ── Newsletter ──────────────────────────────────────────────────────────── */
+const NEWSLETTER_DISMISSED_KEY = 'pulse_newsletter_dismissed';
+
+function initNewsletter() {
+  // Show card after first load unless dismissed
+  if (!localStorage.getItem(NEWSLETTER_DISMISSED_KEY)) {
+    document.getElementById('newsletterCard').hidden = false;
+  }
+
+  document.getElementById('dismissNewsletterBtn').addEventListener('click', () => {
+    document.getElementById('newsletterCard').hidden = true;
+    localStorage.setItem(NEWSLETTER_DISMISSED_KEY, '1');
+  });
+
+  document.getElementById('newsletterSubscribeBtn').addEventListener('click', () => {
+    const email = document.getElementById('newsletterEmail').value.trim();
+    const url = state.settings.newsletterUrl || '';
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      document.getElementById('newsletterEmail').focus();
+      return;
+    }
+
+    if (!url) {
+      alert('No newsletter configured yet.\n\nGo to Settings → Newsletter and paste your Beehiiv, Mailchimp, or Buttondown sign-up URL.');
+      return;
+    }
+
+    // Open configured newsletter URL with email pre-filled
+    const target = url.includes('?')
+      ? `${url}&email=${encodeURIComponent(email)}`
+      : `${url}?email=${encodeURIComponent(email)}`;
+    window.open(target, '_blank', 'noopener,noreferrer');
+
+    // Dismiss card after subscribe attempt
+    document.getElementById('newsletterCard').hidden = true;
+    localStorage.setItem(NEWSLETTER_DISMISSED_KEY, '1');
+  });
+}
+
+/* ── Share Digest ────────────────────────────────────────────────────────── */
+function shareDigest() {
+  if (!state.currentReport) return;
+  const { inPeriod, groups } = state.currentReport;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dateStr = today.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+
+  let text = `⚡ Pulse AI Daily Digest — ${dateStr}\n`;
+  text += `${inPeriod.length} AI stories across ${Object.keys(groups).length} topics\n\n`;
+
+  for (const group of Object.values(groups).sort((a, b) => b.articles.length - a.articles.length)) {
+    text += `${group.emoji} ${group.label}\n`;
+    group.articles.slice(0, 3).forEach(a => { text += `• ${a.title}\n`; });
+    text += '\n';
+  }
+  text += '🔗 Read at Pulse AI';
+
+  if (navigator.share) {
+    navigator.share({ title: `Pulse AI — ${dateStr}`, text });
+  } else {
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('shareDigestBtn');
+      const orig = btn.innerHTML;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.innerHTML = orig; }, 2000);
+    });
+  }
+}
+
 /* ── Bootstrap ───────────────────────────────────────────────────────────── */
 function init() {
+  registerSW();
   loadStorage();
   applyTheme(state.settings.theme);
   initEvents();
+  initInstallBanner();
+  initNewsletter();
   setupAutoRefresh();
   fetchAllNews(false);
 }
